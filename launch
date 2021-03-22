@@ -1,0 +1,48 @@
+#!/bin/bash
+# Script permettant de lancer Minecraft
+# Version 1.2
+
+# Usage de la commande
+if [ $# -eq 0 ]
+then
+	echo "Usage: $0 <version>" > /dev/stderr
+	exit 1
+fi
+
+# Préparation de l'evironement
+DIRECTORY=`dirname $0`
+clear
+
+# Config Profile
+if [ -r $DIRECTORY/Login/profile.txt ]
+then
+	PROFILE=$(cat $DIRECTORY/Login/profile.txt)
+	USERNAME=$(echo $PROFILE | cut -d ':' -f 1)
+	USERID=$(echo $PROFILE | cut -d ':' -f 2)
+	ACCESS=$(echo $PROFILE | cut -d ':' -f 3)
+else
+	USERNAME=$USER
+	USERID=$(dbus-uuidgen)
+	ACCESS="0"
+fi
+
+# Emplacement de sauvegarde
+GAMEDIR=$DIRECTORY/GameData
+
+# Config Jeu
+VERSION=$1
+VERSION_DIR=$DIRECTORY/GameSystem/versions/$VERSION
+
+# Chargements des bibliothèques. À NE PAS TOUCHER
+LIBRARIES=''
+IFS=$'\n'
+for Line in $(cat $VERSION_DIR/$VERSION-libraries.txt 2> /dev/null)
+do
+	LIBRARIES=$LIBRARIES$DIRECTORY/GameSystem/libraries/$Line:
+done
+LIBRARIES=$LIBRARIES$VERSION_DIR/$VERSION.jar
+
+# Lancement du jeu
+echo "Launching $VERSION..."
+
+java -Xmx1024M -Xms1024M -Dfile.encoding=Cp1252 -Djava.library.path=$VERSION_DIR/natives -classpath $LIBRARIES net.minecraft.client.main.Main --version local --versionType release --gameDir $GAMEDIR --username $USERNAME --uuid $USERID --assetsDir $DIRECTORY/GameSystem/assets --assetIndex $VERSION --accessToken $ACCESS

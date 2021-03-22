@@ -1,0 +1,53 @@
+#!/bin/bash
+# Script permettant de se connecter à un compte Mojang
+# Utilise l'API de Mojang pour contacter Yggdrasil
+
+# Dossier regroupant tout le système du script
+DIRECTORY=`dirname $0`
+
+# Login sans connexion
+if [ $# -gt 0 ]
+then
+if [ "$1" = "offline" ]
+then
+	read -p "Username: " USERNAME
+	USERID=$(dbus-uuidgen)
+	echo " "
+	echo "Login sucessfully ! Profile Informations :"
+	echo "Username: $USERNAME,"
+	echo "User ID: $USERID,"
+	echo "Access Token: 0"
+	echo $USERNAME:$USERID:0 > $DIRECTORY/profile.txt
+	exit 0
+fi
+fi
+
+# Mise en place du login
+read -p "Login as: " LOGIN
+read -s -p "Password: " PASSWORD
+echo $'\n'
+
+# Envoie de la requête
+OUT=$(curl --silent -H "Content-Type: application/json" -X POST --data "{\"agent\": {\"name\": \"Minecraft\", \"version\": 1}, \"username\": \"$LOGIN\", \"password\": \"$PASSWORD\" }" https://authserver.mojang.com/authenticate)
+ERROR=$(echo $OUT | $DIRECTORY/jq-linux64 -r .error)
+
+if [ "$ERROR" != "null" ]
+then
+	echo "Error occured: $ERROR" > /dev/stderr
+	echo $(echo $OUT | $DIRECTORY/jq-linux64 -r .errorMessage) > /dev/stderr
+	exit 1
+else
+	# Sauvegarde du profil
+	USERNAME=$(echo $OUT | $DIRECTORY/jq-linux64 -r .selectedProfile.name)
+	USERID=$(echo $OUT | $DIRECTORY/jq-linux64 -r .selectedProfile.id)
+	ACCESS=$(echo $OUT | $DIRECTORY/jq-linux64 -r .accessToken)
+
+	echo "Login sucessfully ! Profile Informations :"
+	echo "Username: $USERNAME,"
+	echo "User ID: $USERID,"
+	echo "Access Token: $ACCESS"
+
+	echo $USERNAME:$USERID:$ACCESS > $DIRECTORY/profile.txt
+fi
+
+
